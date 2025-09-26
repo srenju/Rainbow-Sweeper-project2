@@ -1,0 +1,233 @@
+<!-- 
+File Name: index.html
+Project: Minesweeper (EECS 581 - Fall 2025)
+Description: 
+    Main entry point for the Minesweeper web application. 
+    Provides structure for the user interface, including 
+    the popup welcome overlay, draggable images, settings 
+    panel, minesweeper grid, audio playback, and footer.
+
+Inputs:
+    - User inputs for game settings (width, height, number of mines).
+    - Mouse events for dragging background images.
+    - User interaction (clicks) to enable audio autoplay.
+
+Outputs:
+    - Visual Minesweeper grid generated via game.js.
+    - Real-time status messages in the status indicator.
+    - Flag counter displaying remaining flags.
+
+External Sources:
+    - Draggable image and cursor interaction pattern adapted from 
+      common JavaScript drag-and-drop tutorials (e.g., MDN Web Docs).
+    - Minesweeper core logic implemented in external file `game/game.js`.
+
+Author: Reem Fatima, Pashia Vang, Alejandro Sandoval, Liam Aga, Jorge Trujillo, Aiden Barnard
+Creation Date: September 08, 2025
+===============================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Minesweeper</title>
+
+	<!-- External stylesheet and favicon -->
+	<link rel="stylesheet" href="styles.css">
+	<link rel="icon" type="image/goodbye-kitty.png" href="/images/goodbye-kitty.png">
+</head>
+
+<body>
+	<!-- Background audio -->
+	<audio id="minesweeper-audio" src="audio/classic.mp3" autoplay loop></audio>
+
+	<!-- Overlay and popup -->
+	<div id="popupOverlay"></div>
+	<div id="popupContainer">
+	  <h2>Welcome!</h2>
+	  <p>PLAY</p>
+	  <button id="closePopup">begin</button>
+	</div>
+	
+	<!-- Draggable background images -->
+	<div class="background-images">
+		<img src="images/goodbye-kitty.png" alt="goodbye kitty Logo" class="draggable"
+			style="width:150px; top:10px; left:30px;">
+		<img src="images/tomater.png" alt="tomater" class="draggable" style="width:150px; top:620px; left:300px;">
+		<img src="images/overcompensating.png" alt="tomater" class="draggable"
+			style="width:150px; top:600px; left:1250px;">
+		<img src="images/lightning-mcqueen-engineer.png" alt="tomater" class="draggable"
+			style="width:150px; top:400px; left:200px;">
+		<img src="images/tubby.jpeg" alt="tomater" class="draggable" style="width:100px; top:400px; left:1200px;">
+	</div>
+
+
+	<!-- Main content area -->
+	<div class="content">
+		<!-- Game settings form-->
+		<div class="settings">
+			<h2>Game Settings</h2>
+			<label>
+				<!-- width -->
+				Width:
+				<input type="number" id="grid-width" value="10" min="5" max="30">
+			</label>
+			<label>
+				<!-- height-->
+				Height:
+				<input type="number" id="grid-height" value="10" min="5" max="30">
+			</label>
+			<label>
+				<!-- number of bombs-->
+				Mines:
+				<input type="number" id="bomb-count" value="10" min="10" max="20">
+			</label>
+			<!-- Audio settings -->
+			<div class="audio-settings">
+				<h3>Music</h3>
+				<label for="audio-track">Track:</label>
+				<select id="audio-track">
+					<option value="classic" selected>Classic</option>
+					<option value="rap">Rap</option>
+				</select>
+			</div>
+			<!-- Start game button -->
+			<button id="start-game">Start Game</button>
+		</div>
+
+		<!-- Dynamic status indicator (e.g., "You Won!" / "Game Over") -->
+		<div class="status-indicator" id="status-indicator"></div>
+
+		<!-- Flag counter display -->
+		<div class="flag-counter-container">
+			<p>⚑</p>
+			<input type="text" id="flag-counter" value="10" placeholder="Mines" readonly>
+		</div>
+
+		<!-- Game grid will be generated here by game.js -->
+		<div class="minesweeper-grid" id="minesweeper-grid"></div>
+		<script type="module" src="game/game.js"></script>
+	</div>
+
+	<!-- Inline JavaScript for draggable images and status updates -->
+	<script>
+		// Makes the background images draggable by the user
+		document.querySelectorAll('.draggable').forEach(img => {
+			let offsetX, offsetY, isDragging = false;
+
+			// Mouse down -> starts dragging
+			img.addEventListener('mousedown', e => {
+				isDragging = true;
+				offsetX = e.clientX - img.offsetLeft;
+				offsetY = e.clientY - img.offsetTop;
+				img.style.cursor = 'grabbing';
+			});
+
+			// Mouse move -> updates the image position
+			document.addEventListener('mousemove', e => {
+				if (isDragging) {
+					img.style.left = (e.clientX - offsetX) + 'px';
+					img.style.top = (e.clientY - offsetY) + 'px';
+				}
+			});
+
+			// Mouse up -> stops dragging
+			document.addEventListener('mouseup', () => {
+				isDragging = false;
+				img.style.cursor = 'grab';
+			});
+		});
+
+		/**
+		 * setStatus
+		 * Updates the status message displayed to the player.
+		 * @param {string} message - Message to display.
+		 * @param {string} statusClass - CSS class for styling (e.g., win/lose).
+		 */
+		function setStatus(message, statusClass) {
+			const indicator = document.getElementById("status-indicator"); // Status indicator element
+			indicator.textContent = message; // Update message
+			indicator.className = "status-indicator " + statusClass; // Update class for styling
+		}
+
+		const audioElement = document.getElementById('minesweeper-audio'); // Audio element
+		const trackSelect = document.getElementById('audio-track'); // Track selection dropdown
+
+		// Available audio tracks
+		const audioTracks = {
+			classic: 'audio/classic.mp3',
+			rap: 'audio/rap.mp3'
+		};
+		let audioUnlocked = false;
+
+		/**
+		 * setAudioTrack
+		 * Changes the audio track and optionally starts playback.
+		 * @param {string} trackKey - Key of the selected track.
+		 * @param {boolean} shouldAutoplay - Whether to autoplay after setting.
+		 */
+		function setAudioTrack(trackKey, shouldAutoplay) {
+			if (!audioElement) return; // exit if no audio element is present
+			const nextSrc = audioTracks[trackKey];
+			if (!nextSrc) return; // exit if invalid track key
+
+			// Change source if it differs from the current
+			if (audioElement.getAttribute('src') !== nextSrc) {
+				audioElement.src = nextSrc;
+				audioElement.load();
+			}
+
+			// Autoplay if allowed
+			if (shouldAutoplay && audioUnlocked) {
+				const playPromise = audioElement.play();
+				if (playPromise) {
+					playPromise.catch(() => {
+						// Ignore autoplay errors, browser will retry after next interaction.
+					});
+				}
+			}
+		}
+
+		// Event listener for track selection changes
+		if (trackSelect) {
+			trackSelect.addEventListener('change', (event) => { // listens for changes in the dropdown selection
+				setAudioTrack(event.target.value, true); // change track and autoplay
+			});
+			setAudioTrack(trackSelect.value, false); // set initial track without autoplay
+		}
+
+		/**
+		 * enableAudioAutoplay
+		 * Ensures audio starts only after the first user interaction
+		 * (browser restriction workaround).
+		 */
+		function enableAudioAutoplay() {
+			if (!audioElement) return;
+			audioUnlocked = true;
+			const playPromise = audioElement.play();
+			if (playPromise) {
+				playPromise.catch(() => {
+					// Ignore autoplay errors, browser will retry after next interaction.
+				});
+			}
+		}
+
+		// Listen for the first user interaction to enable audio autoplay
+		document.addEventListener('click', function handleFirstInteraction() {
+			enableAudioAutoplay();
+			document.removeEventListener('click', handleFirstInteraction);
+		}, { once: true });
+	</script>
+
+
+</body>
+
+<!-- Course footer-->
+<footer>
+	<p style="text-align: center;">EECS 581 - Fall 2025 - University of Kansas</p>
+
+</footer>
+
+</html>
